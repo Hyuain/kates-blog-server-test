@@ -36,30 +36,44 @@ const serverHandel = (request, response) => {
 
   request.query = querystring.parse(url.split('?')[1])
 
-  getPostData(request).then(postData => {
-    request.body = postData
-    const blogData = handleBlogRouter(request, response)
-    if (blogData) {
-      response.end(
-        JSON.stringify(blogData)
-      )
+  request.cookie = {}
+  const cookieStr = request.headers.cookie || ''
+  cookieStr.split(';').forEach(item => {
+    if (!item) {
       return
     }
-
-    const userData = handleUserRouter(request, response)
-    if (userData) {
-      response.end(
-        JSON.stringify(userData)
-      )
-      return
-    }
-
-    response.writeHead(404, {'Content-Type': 'text/plain'})
-    response.write('404 Not Found\n')
-    response.end()
+    const arr = item.split('=')
+    const key = arr[0].trim()
+    request.cookie[key] = arr[1].trim()
   })
 
+  getPostData(request).then(postData => {
+      request.body = postData
+      const blogResult = handleBlogRouter(request, response)
+      if (blogResult) {
+        blogResult.then(blogData => {
+          response.end(
+            JSON.stringify(blogData)
+          )
+        })
+        return
+      }
 
+      const userResult = handleUserRouter(request, response)
+      if (userResult) {
+        userResult.then(userData => {
+          response.end(
+            JSON.stringify(userData)
+          )
+        })
+        return
+      }
+
+      response.writeHead(404, {'Content-Type': 'text/plain'})
+      response.write('404 Not Found\n')
+      response.end()
+    }
+  )
 }
 
 module.exports = serverHandel
