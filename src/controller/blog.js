@@ -1,10 +1,14 @@
-const {execute} = require('../db/mysql.js')
+const xss = require('xss')
+const {execute,escape} = require('../db/mysql.js')
+
 const getList = (author, keyword) => {
   let sql = `select id, title, content, createtime, author from blogs where 1=1 `
   if (author) {
-    sql += `and author='${author}' `
+    author = escape(author)
+    sql += `and author=${author} `
   }
   if (keyword) {
+    keyword = escape(keyword)
     sql += `and title like '%${keyword}%' `
   }
   sql += `order by createtime desc;`
@@ -12,20 +16,21 @@ const getList = (author, keyword) => {
 }
 
 const getDetail = (id) => {
-  const sql = `select id, title, content, createtime, author from blogs where id='${id}';`
+  id = escape(id)
+  const sql = `select id, title, content, createtime, author from blogs where id=${id};`
   return execute(sql).then(rows => {
     return rows[0]
   })
 }
 
 const newBlog = (blogData = {}) => {
-  const title = blogData.title
-  const content = blogData.content
+  const title = escape(xss(blogData.title))
+  const content = escape(xss(blogData.content))
   const createTime = Date.now()
-  const author = blogData.author
+  const author = escape(xss(blogData.author))
   const sql = `
     insert into blogs (title, content, createtime, author)
-    values ('${title}', '${content}', '${createTime}', '${author}');
+    values (${title}, ${content}, '${createTime}', ${author});
   `
   return execute(sql).then(insertData => {
     return {
@@ -35,10 +40,11 @@ const newBlog = (blogData = {}) => {
 }
 
 const updateBlog = (id, blogData = {}) => {
-  const title = blogData.title
-  const content = blogData.content
+  id = escape(id)
+  const title = escape(blogData.title)
+  const content = escape(blogData.content)
   const sql = `
-    update blogs set title='${title}', content='${content}' where id='${id}';
+    update blogs set title=${title}, content=${content} where id=${id};
   `
   return execute(sql).then(updateData => {
     return updateData.affectedRows > 0
